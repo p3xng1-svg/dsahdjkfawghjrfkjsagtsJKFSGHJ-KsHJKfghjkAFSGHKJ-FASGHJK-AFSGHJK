@@ -2,7 +2,7 @@
 --// Place in StarterPlayer > StarterPlayerScripts
 
 local APPROVED_USERS = {
-    11190411720, 3667276935, 3634382316, 1595962073
+    11190411720, 3667276935, 3634382316, 1595962073, 4902665834
 }
 
 local LocalPlayer = game:GetService("Players").LocalPlayer
