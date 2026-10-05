@@ -1,7 +1,6 @@
---// MELS MAIN - DaHood UNDETECTED (NEW SKIN CHANGER + WHITELIST)
+--// MELS MAIN - DaHood UNDETECTED
 --// Place in StarterPlayer > StarterPlayerScripts
--- ============ APPROVED USERS ============
--- ============ WHITELIST ============
+
 local APPROVED_USERS = {
     11190411720, 3667276935, 3634382316, 1595962073
 }
@@ -27,6 +26,7 @@ if not IsApproved(LocalPlayer.UserId) then
     LocalPlayer:Kick("tried stealing my script https://discord.gg/hB7Uz6xyX XO.")
     return
 end
+
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local UIS = game:GetService("UserInputService")
@@ -37,11 +37,8 @@ local Workspace = game:GetService("Workspace")
 local StarterGui = game:GetService("StarterGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
-
---==================================================
--- UI SOUNDS
---==================================================
 local ContentProvider = game:GetService("ContentProvider")
+local Stats = game:GetService("Stats")
 
 local _hoverSound = Instance.new("Sound")
 _hoverSound.Name = "MelsUIHover"
@@ -90,9 +87,6 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 local mouse = Player:GetMouse()
 local camera = workspace.CurrentCamera
 
---==================================================
--- WHITELIST STATE (defined before targeting funcs)
---==================================================
 local _whitelisted = {}
 local _whitelistRows = {}
 local _wlListFrame = nil
@@ -110,10 +104,6 @@ local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "_ui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = CoreGui
-
---==================================================
--- NEW SKIN CHANGER CONFIG (shared.Saved)
---==================================================
 
 shared.Saved = {
     ["GunModifiers"] = {
@@ -146,9 +136,6 @@ shared.Saved = {
 
 local skinLoaderLoaded = false
 pcall(function()
-    -- ============================================================
-    -- INLINED SKIN CHANGER (was: pastebin.com/raw/sBm1auiD)
-    -- ============================================================
     local v1 = unpack or table.unpack
     if not LPH_OBFUSCATED or LPH_OBFUSCATED == nil then
         function LPH_JIT_MAX(...)
@@ -2231,14 +2218,8 @@ pcall(function()
             end)
         end)()
     end
-    -- ============================================================
-    -- END INLINED SKIN CHANGER
-    -- ============================================================
     skinLoaderLoaded = true
 end)
---==================================================
--- SKIN LISTS FOR DROPDOWNS
---==================================================
 
 local defaultGunSkins = {
     "Default",
@@ -2314,16 +2295,8 @@ local weaponConfigs = {
     ['[Knife]'] = { name = "Knife", skins = knifeSkins }
 }
 
---==================================================
--- TIME CHANGER VARIABLES
---==================================================
-
 local _timeOverride = false
 local _timeTarget = Lighting.ClockTime
-
---==================================================
--- ORIGINAL MELS VARIABLES
---==================================================
 
 local _silent = true
 local _fov = 1000
@@ -2372,9 +2345,11 @@ local _hitbox = false
 local _fogColor = Color3.fromRGB(200, 195, 215)
 local _fogIntensity = 500
 
---==================================================
--- ORIGINAL FUNCTIONS
---==================================================
+-- FPS variables
+local _fpsUnlock = false
+local _fpsCap = 60
+local _fpsShow = true
+local _fpsDisplay = nil
 
 local function _checkKnock(char)
     if not _knock then return false end
@@ -2392,7 +2367,7 @@ local function _getPart(char)
     local shortest = math.huge
     local mpos = Vector2.new(mouse.X, mouse.Y)
     local parts = {"Head", "HumanoidRootPart", "LeftUpperLeg", "LeftLowerLeg", "LeftFoot", "RightUpperLeg", "RightLowerLeg", "RightFoot", "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand"}
-    for _, pName in pairs(parts) do
+    for _, pName in ipairs(parts) do
         local p = char:FindFirstChild(pName)
         if p then
             local pos, on = camera:WorldToScreenPoint(p.Position)
@@ -2546,10 +2521,6 @@ if _spreadLib and type(_spreadLib.roll) == "function" then
     end
 end
 
---==================================================
--- THEMES
---==================================================
-
 local _themes = {
     Pink = {
         Main = Color3.fromRGB(255, 230, 240),
@@ -2622,10 +2593,6 @@ local _themes = {
 local _currTheme = "Pink"
 local _currentAccent = _themes.Pink.Accent
 
---==================================================
--- GUI CREATION (ORIGINAL SIZE 680x480)
---==================================================
-
 local _main = Instance.new("Frame")
 _main.Name = "_main"
 _main.Size = UDim2.fromOffset(680, 480)
@@ -2653,9 +2620,6 @@ _dragBar.BackgroundTransparency = 1
 _dragBar.ZIndex = 100
 _dragBar.Parent = _main
 
---==================================================
--- DRAGGABLE WINDOW
---==================================================
 local _dragging = false
 local _dragStart = nil
 local _startPos = nil
@@ -2839,6 +2803,7 @@ local _tabList = {
     "Avatar",
     "Time Changer",
     "Skin Changer",
+    "FPS",
     "Whitelist",
     "Theme",
     "Settings"
@@ -2849,10 +2814,6 @@ local _themeButtons = {}
 local _killBtn = nil
 local _uiElements = {}
 local _skinDropdowns = {}
-
---==================================================
--- UI HELPERS
---==================================================
 
 local function _makeToggle(parent, y, text, val, cb)
     local row = Instance.new("Frame")
@@ -3191,10 +3152,6 @@ local function _makeKeybind(parent, y, text, def, cb)
     return row
 end
 
---==================================================
--- TIME CHANGER FUNCTIONS
---==================================================
-
 local function _formatTime(hour)
     hour = hour % 24
     local h = math.floor(hour)
@@ -3207,10 +3164,6 @@ local function _setTime(hour)
     _timeTarget = hour
     Lighting:SetAttribute("DayTimeValue", hour)
 end
-
---==================================================
--- SKIN DROPDOWN (writes directly to shared.Saved)
---==================================================
 
 local function _writeSkin(weaponKey, skinName)
     if not shared.Saved then shared.Saved = {} end
@@ -3333,10 +3286,6 @@ local function _makeSkinDropdown(parent, y, weaponKey, weaponName, options)
     return row
 end
 
---==================================================
--- KILL FUNCTION
---==================================================
-
 local function _kill()
     if Player and Player.Character then
         local hum = Player.Character:FindFirstChild("Humanoid")
@@ -3360,6 +3309,8 @@ local function _kill()
     _speed = false
     _jump = false
     _timeOverride = false
+    _fpsUnlock = false
+    _fpsShow = false
     
     Lighting.FogColor = Color3.fromRGB(130, 120, 150)
     if Lighting:FindFirstChild("Atmosphere") then
@@ -3381,10 +3332,6 @@ local function _kill()
         end
     end
 end
-
---==================================================
--- THEME FUNCTIONS
---==================================================
 
 local function _updateKillTheme()
     if _killBtn then
@@ -3595,10 +3542,6 @@ local function _showPage(name)
     end
 end
 
---==================================================
--- WHITELIST HELPERS
---==================================================
-
 local function _wlApplyRowVisual(plr)
     local row = _whitelistRows[plr.UserId]
     if not row or not row.Parent then return end
@@ -3765,10 +3708,6 @@ Players.PlayerRemoving:Connect(function(plr)
     _whitelisted[plr.UserId] = nil
     _wlRemoveRow(plr)
 end)
-
---==================================================
--- BUILD TABS
---==================================================
 
 for _, tabName in ipairs(_tabList) do
     local btn = Instance.new("TextButton")
@@ -4105,7 +4044,7 @@ for _, tabName in ipairs(_tabList) do
         statusLabel.Size = UDim2.new(1, -20, 0, 30)
         statusLabel.Position = UDim2.new(0, 10, 0, yOff)
         statusLabel.BackgroundTransparency = 1
-        statusLabel.Text = skinLoaderLoaded and "✅ Skin loader loaded" or "⚠️ Skin loader failed (pastebin may be down)"
+        statusLabel.Text = skinLoaderLoaded and "✅ Skin loader loaded" or "⚠️ Skin loader failed"
         statusLabel.TextColor3 = skinLoaderLoaded and Color3.fromRGB(80, 255, 180) or Color3.fromRGB(255, 200, 80)
         statusLabel.TextSize = 12
         statusLabel.Font = Enum.Font.Gotham
@@ -4113,6 +4052,95 @@ for _, tabName in ipairs(_tabList) do
         statusLabel.Parent = panel
         table.insert(_uiElements, {type = "text", label = statusLabel})
         yOff = yOff + 40
+        
+        panel.CanvasSize = UDim2.new(0, 0, 0, yOff + 20)
+        
+    elseif tabName == "FPS" then
+        local panel = Instance.new("ScrollingFrame")
+        panel.Name = "_panel"
+        panel.Size = UDim2.new(1, 0, 1, -48)
+        panel.Position = UDim2.new(0, 0, 0, 45)
+        panel.BackgroundColor3 = _themes.Pink.Panel
+        panel.BorderSizePixel = 0
+        panel.ScrollBarThickness = 0
+        panel.ScrollBarImageColor3 = _themes.Pink.Accent
+        panel.AutomaticCanvasSize = Enum.AutomaticSize.Y
+        panel.CanvasSize = UDim2.new(0, 0, 0, 0)
+        panel.ScrollingDirection = Enum.ScrollingDirection.Y
+        panel.Parent = page
+        
+        local pCorner = Instance.new("UICorner")
+        pCorner.CornerRadius = UDim.new(0, 12)
+        pCorner.Parent = panel
+        
+        local padding = Instance.new("UIPadding")
+        padding.PaddingTop = UDim.new(0, 10)
+        padding.PaddingBottom = UDim.new(0, 10)
+        padding.PaddingLeft = UDim.new(0, 5)
+        padding.PaddingRight = UDim.new(0, 5)
+        padding.Parent = panel
+        
+        local yOff = 0
+        
+        -- FPS Display
+        local fpsDisplay = Instance.new("TextLabel")
+        fpsDisplay.Size = UDim2.new(1, 0, 0, 50)
+        fpsDisplay.Position = UDim2.new(0, 0, 0, yOff)
+        fpsDisplay.BackgroundTransparency = 1
+        fpsDisplay.Text = "FPS: 60"
+        fpsDisplay.TextColor3 = _themes.Pink.Accent
+        fpsDisplay.TextSize = 36
+        fpsDisplay.Font = Enum.Font.FredokaOne
+        fpsDisplay.Parent = panel
+        _fpsDisplay = fpsDisplay
+        table.insert(_uiElements, {type = "text", label = fpsDisplay})
+        yOff = yOff + 55
+        
+        _makeToggle(panel, yOff, "Show FPS", _fpsShow, function(v)
+            _fpsShow = v
+            if fpsDisplay then
+                fpsDisplay.Visible = v
+            end
+        end)
+        yOff = yOff + 38
+        
+        _makeToggle(panel, yOff, "Unlock FPS", _fpsUnlock, function(v)
+            _fpsUnlock = v
+            if v then
+                pcall(function()
+                    if setfpscap then setfpscap(_fpsCap) end
+                end)
+            else
+                pcall(function()
+                    if setfpscap then setfpscap(60) end
+                end)
+            end
+        end)
+        yOff = yOff + 38
+        
+        _makeSlider(panel, yOff, "FPS Cap", _fpsCap, 1, 1000, 1, function(v)
+            _fpsCap = v
+            if _fpsUnlock then
+                pcall(function()
+                    if setfpscap then setfpscap(v) end
+                end)
+            end
+        end)
+        yOff = yOff + 44
+        
+        local info = Instance.new("TextLabel")
+        info.Size = UDim2.new(0.9, 0, 0, 50)
+        info.Position = UDim2.new(0.05, 0, 0, yOff)
+        info.BackgroundTransparency = 1
+        info.Text = "Uncaps FPS up to 1000.\nNote: Server may limit actual FPS."
+        info.TextColor3 = _themes.Pink.Text
+        info.Font = Enum.Font.Gotham
+        info.TextSize = 12
+        info.TextWrapped = true
+        info.TextXAlignment = Enum.TextXAlignment.Center
+        info.Parent = panel
+        table.insert(_uiElements, {type = "text", label = info})
+        yOff = yOff + 60
         
         panel.CanvasSize = UDim2.new(0, 0, 0, yOff + 20)
         
@@ -4663,10 +4691,6 @@ for _, tabName in ipairs(_tabList) do
     end)
 end
 
---==================================================
--- RUN LOOPS
---==================================================
-
 RunService.Heartbeat:Connect(function()
     if _speed and _speedActive then
         if Player and Player.Character then
@@ -4779,11 +4803,26 @@ RunService.RenderStepped:Connect(function()
             if v ~= Player and v.Character then
                 for _, c in pairs(v.Character:GetDescendants()) do
                     if c:IsA("BoxHandleAdornment") or c:IsA("BillboardGui") and c.Name ~= "DefenseBBGUI" then
-								c:Destroy()
+                        c:Destroy()
                     end
                 end
             end
         end
+    end
+end)
+
+-- FPS counter loop
+local _fpsFrameCount = 0
+local _fpsTimeElapsed = 0
+RunService.RenderStepped:Connect(function(dt)
+    if not _fpsShow or not _fpsDisplay or not _fpsDisplay.Parent then return end
+    _fpsFrameCount = _fpsFrameCount + 1
+    _fpsTimeElapsed = _fpsTimeElapsed + dt
+    if _fpsTimeElapsed >= 0.5 then
+        local fps = math.round(_fpsFrameCount / _fpsTimeElapsed)
+        _fpsDisplay.Text = "FPS: " .. tostring(fps)
+        _fpsFrameCount = 0
+        _fpsTimeElapsed = 0
     end
 end)
 
@@ -4846,10 +4885,6 @@ Player.CharacterAdded:Connect(function(char)
     end
 end)
 
---==================================================
--- DRAGGING
---==================================================
-
 _applyTheme("Pink")
 _showPage("Settings")
 
@@ -4882,6 +4917,6 @@ end)
 
 StarterGui:SetCore("SendNotification", {
     Title = "mels main",
-    Text = "Whitelist tab added.",
+    Text = "FPS tab added.",
     Duration = 3
 })
