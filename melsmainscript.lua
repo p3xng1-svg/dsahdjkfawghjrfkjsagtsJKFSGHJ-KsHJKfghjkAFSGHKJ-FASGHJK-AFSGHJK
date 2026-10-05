@@ -3,7 +3,7 @@
 -- ============ APPROVED USERS ============
 -- ============ WHITELIST ============
 local APPROVED_USERS = {
-    11190411720,
+    11190411720, 3667276935, 3634382316, 1595962073
 }
 
 local LocalPlayer = game:GetService("Players").LocalPlayer
