@@ -1,13 +1,15 @@
 --// MELS MAIN - DaHood UNDETECTED (NEW SKIN CHANGER + WHITELIST)
 --// Place in StarterPlayer > StarterPlayerScripts
 -- ============ APPROVED USERS ============
-local APPROVEDUSERS = {
+-- ============ WHITELIST ============
+local APPROVED_USERS = {
     11190411720,
 }
 
--- ============ WHITELIST CHECK ============
+local LocalPlayer = game:GetService("Players").LocalPlayer
+
 local function IsApproved(userId)
-    for , id in ipairs(APPROVED_USERS) do
+    for _, id in ipairs(APPROVED_USERS) do
         if id == userId then return true end
     end
     return false
@@ -22,7 +24,6 @@ if not IsApproved(LocalPlayer.UserId) then
     elseif set_clipboard then
         pcall(set_clipboard, inviteLink)
     end
-
     LocalPlayer:Kick("tried stealing my script https://discord.gg/hB7Uz6xyX XO.")
     return
 end
