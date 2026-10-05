@@ -3,7 +3,7 @@
 
 -- ============ APPROVED USERS ============
 local APPROVEDUSERS = {
-,
+		3634382316,
 }
 
 -- ============ WHITELIST CHECK ============
