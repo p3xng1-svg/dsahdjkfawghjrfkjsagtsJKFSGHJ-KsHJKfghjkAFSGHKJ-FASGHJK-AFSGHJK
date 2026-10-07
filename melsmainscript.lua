@@ -47,9 +47,6 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local mouse = LocalPlayer:GetMouse()
 local camera = workspace.CurrentCamera
 
--- ============================================================
--- DA HOOD DEFAULT FOG VALUES
--- ============================================================
 local DAHOOD_DEFAULT_FOG = {
     FogColor = Color3.fromRGB(194, 194, 194),
     FogStart = 0,
@@ -64,9 +61,6 @@ local DAHOOD_DEFAULT_FOG = {
     }
 }
 
--- ============================================================
--- STATE / THEMES / SOUND
--- ============================================================
 local state = {
     Current = "Baby Blue",
     Values = {},
@@ -97,18 +91,21 @@ local themes = {
     ["Peach Fuzz"] = { Main = Color3.fromRGB(255, 230, 215), Sidebar = Color3.fromRGB(255, 185, 155), Content = Color3.fromRGB(255, 244, 235), Panel = Color3.fromRGB(255, 215, 195), Accent = Color3.fromRGB(245, 145, 115), AccentLight = Color3.fromRGB(255, 220, 205), Text = Color3.fromRGB(200, 95, 70), Stroke = Color3.fromRGB(250, 180, 155), Outline = Color3.fromRGB(170, 80, 55) },
 }
 
--- Thin, dark, subtle rounded stroke for interactive elements only
+local function _darken(color, amount)
+    return Color3.new(
+        math.clamp(color.R * (1 - amount), 0, 1),
+        math.clamp(color.G * (1 - amount), 0, 1),
+        math.clamp(color.B * (1 - amount), 0, 1)
+    )
+end
+
+local function _inputColor()
+    local t = themes[state.Current]
+    return _darken(t.Panel, 0.12)
+end
+
 local function _makeStroke(parent)
-    local s = Instance.new("UIStroke")
-    s.Thickness = 1
-    s.Color = themes[state.Current].Outline
-    s.Transparency = 0.55
-    s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    -- NOTE: Removed LineJoinMode = Miter so UIStroke defaults to Round,
-    -- which makes the corners curve smoothly around rounded UICorners.
-    s.Parent = parent
-    table.insert(state.Elements, { type = "stroke", stroke = s })
-    return s
+    return nil
 end
 
 local _hoverSound = Instance.new("Sound")
@@ -144,9 +141,6 @@ ScreenGui.Name = "_ui"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = services.CoreGui
 
--- ============================================================
--- SETTINGS
--- ============================================================
 local settings = {
     Time = { Override = false, Target = services.Lighting.ClockTime },
     Silent = { Enabled = true, FOV = 1000, Spread = 100, Exclude = false, Wall = false, Knock = false, AimPart = "Head" },
@@ -166,13 +160,10 @@ local settings = {
     Spider = { Enabled = false, Value = 55, Active = false, Bind = "Space" },
     Hitbox = { HeadSize = 1, Transparency = 0.7, Color = Color3.fromRGB(145, 100, 220), Enabled = false },
     Avatar = { Headless = false, Korblox = false },
-    Fog = { Color = DAHOOD_DEFAULT_FOG.FogColor, Intensity = DAHOOD_DEFAULT_FOG.FogEnd },
+    Fog = { Color = DAHOOD_DEFAULT_FOG.FogColor, Intensity = DAHOOD_DEFAULT_FOG.FogEnd, Contrast = 0 },
     FPS = { Unlock = false, Cap = 60, Show = true, Display = nil },
 }
 
--- ============================================================
--- SKIN CHANGER BACKEND
--- ============================================================
 shared.Saved = {
     ["GunModifiers"] = {
         ["SkinChanger"] = {
@@ -1228,9 +1219,6 @@ pcall(function()
     skinLoaderLoaded = true
 end)
 
--- ============================================================
--- SKIN LIST CONFIG
--- ============================================================
 local weaponConfigs = {
     ['[Double-Barrel SG]'] = { name = "Double-Barrel SG", skins = { "Default", "Valentine", "Galaxy", "Luck", "Inferno", "Red Hot", "Christmas Wrap", "Golden Age", "Electric", "Golden", "Shadow" } },
     ['[Revolver]'] = { name = "Revolver", skins = { "Default", "Valentine", "Galaxy", "Luck", "Inferno", "Red Hot", "Christmas Wrap", "Golden Age", "Electric", "Golden", "Shadow" } },
@@ -1253,9 +1241,6 @@ local weaponConfigs = {
     ['[Knife]'] = { name = "Knife", skins = { "Default", "Golden", "Golden Age Tanto", "GPO-Knife", "GPO-Knife Prestige", "Heaven", "Love Kukri", "Purple Dagger", "Blue Dagger", "Green Dagger", "Red Dagger", "Portal", "Emerald Butterfly", "Boy", "Girl", "Dragon", "Void", "Wild West", "Iced Out", "Reptile", "Emerald", "Ribbon" } },
 }
 
--- ============================================================
--- CAMLOCK BACKEND
--- ============================================================
 local _camAllHitPartOptions = {
     "Head", "UpperTorso", "LowerTorso", "HumanoidRootPart",
     "LeftUpperArm", "RightUpperArm", "LeftLowerArm", "RightLowerArm",
@@ -1503,9 +1488,6 @@ if not _Camlock.Connection then
     _Camlock.Connection = services.RunService.RenderStepped:Connect(_camUpdate)
 end
 
--- ============================================================
--- OTHER BACKEND
--- ============================================================
 local function _checkKnock(char)
     if not settings.Silent.Knock then return false end
     local effects = char:FindFirstChild("Bodyeffects") or char:FindFirstChild("BodyEffects")
@@ -1628,9 +1610,62 @@ if _spreadLib and type(_spreadLib.roll) == "function" then
     end
 end
 
--- ============================================================
--- UI CONSTRUCTION
--- ============================================================
+local function _applyContrast(value)
+    local atm = services.Lighting:FindFirstChildOfClass("Atmosphere")
+    local baseDensity = DAHOOD_DEFAULT_FOG.Atmosphere.Density
+    local baseBrightness = 2
+    local baseAmbient = services.Lighting.Ambient
+    local baseOutdoorAmbient = services.Lighting.OutdoorAmbient
+    local baseColorShift = services.Lighting.ColorShift_Top
+
+    if value == 0 then
+        if atm then atm.Density = baseDensity end
+        services.Lighting.Brightness = baseBrightness
+        services.Lighting.Ambient = Color3.fromRGB(70, 70, 70)
+        services.Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        services.Lighting.ColorShift_Top = Color3.fromRGB(0, 0, 0)
+    elseif value > 0 then
+        local t = value / 10
+        if atm then atm.Density = math.clamp(baseDensity + (t * 0.5), 0, 1) end
+        services.Lighting.Brightness = math.clamp(baseBrightness + (t * 1.5), 0, 10)
+        services.Lighting.Ambient = Color3.fromRGB(
+            math.clamp(70 + (t * 60), 0, 255),
+            math.clamp(70 + (t * 60), 0, 255),
+            math.clamp(70 + (t * 60), 0, 255)
+        )
+        services.Lighting.OutdoorAmbient = Color3.fromRGB(
+            math.clamp(128 + (t * 80), 0, 255),
+            math.clamp(128 + (t * 80), 0, 255),
+            math.clamp(128 + (t * 80), 0, 255)
+        )
+        services.Lighting.ColorShift_Top = Color3.fromRGB(
+            math.clamp(t * 40, 0, 255),
+            math.clamp(t * 40, 0, 255),
+            math.clamp(t * 40, 0, 255)
+        )
+    else
+        local t = math.abs(value) / 20
+        if atm then atm.Density = math.clamp(baseDensity - (t * 0.3), 0, 1) end
+        services.Lighting.Brightness = math.clamp(baseBrightness - (t * 1.5), 0, 10)
+        local targetGray = 128 - (t * 40)
+        services.Lighting.Ambient = Color3.fromRGB(
+            math.clamp(70 - (t * 40), 0, 255),
+            math.clamp(70 - (t * 40), 0, 255),
+            math.clamp(70 - (t * 40), 0, 255)
+        )
+        services.Lighting.OutdoorAmbient = Color3.fromRGB(
+            math.clamp(128 - (t * 80), 0, 255),
+            math.clamp(128 - (t * 80), 0, 255),
+            math.clamp(128 - (t * 80), 0, 255)
+        )
+        services.Lighting.ColorShift_Top = Color3.fromRGB(
+            math.clamp(-t * 30, -255, 0) + 255,
+            math.clamp(-t * 30, -255, 0) + 255,
+            math.clamp(-t * 30, -255, 0) + 255
+        )
+    end
+end
+
 local _main = Instance.new("Frame")
 _main.Name = "_main"
 _main.Size = UDim2.fromOffset(680, 480)
@@ -1775,9 +1810,6 @@ _pageHolder.Position = UDim2.new(0, 15, 0, 55)
 _pageHolder.BackgroundTransparency = 1
 _pageHolder.Parent = _content
 
--- ============================================================
--- WIDGETS
--- ============================================================
 local function _makeToggle(parent, y, text, key, val, cb)
     state.Values[key] = val
     local row = Instance.new("Frame")
@@ -1898,14 +1930,13 @@ local function _makeSlider(parent, y, text, key, val, min, max, step, cb)
     valBox.TextColor3 = themes[state.Current].Accent
     valBox.TextSize = 13
     valBox.Font = Enum.Font.GothamBold
-    valBox.BackgroundColor3 = themes[state.Current].AccentLight
+    valBox.BackgroundColor3 = _inputColor()
     valBox.BackgroundTransparency = 0.35
     valBox.BorderSizePixel = 0
     valBox.ClearTextOnFocus = false
     valBox.TextXAlignment = Enum.TextXAlignment.Center
     valBox.Parent = row
     Instance.new("UICorner", valBox).CornerRadius = UDim.new(0, 6)
-    _makeStroke(valBox)
 
     local trackC = Instance.new("Frame")
     trackC.Size = UDim2.new(0.48, 0, 1, 0)
@@ -2027,7 +2058,7 @@ local function _makeDropdown(parent, y, text, items, def, cb)
     local main = Instance.new("TextButton")
     main.Size = UDim2.new(0, 160, 0, 30)
     main.Position = UDim2.new(1, -170, 0.5, -15)
-    main.BackgroundColor3 = themes[state.Current].AccentLight
+    main.BackgroundColor3 = _inputColor()
     main.BackgroundTransparency = 0.4
     main.Text = items[def or 1]
     main.TextColor3 = themes[state.Current].Text
@@ -2036,7 +2067,6 @@ local function _makeDropdown(parent, y, text, items, def, cb)
     main.ZIndex = 5
     main.Parent = row
     Instance.new("UICorner", main).CornerRadius = UDim.new(0, 6)
-    _makeStroke(main)
 
     local scroll = Instance.new("ScrollingFrame")
     scroll.Size = UDim2.new(0, 160, 0, math.min(#items * 28, 120))
@@ -2051,7 +2081,6 @@ local function _makeDropdown(parent, y, text, items, def, cb)
     scroll.ScrollBarImageColor3 = themes[state.Current].Accent
     scroll.Parent = row
     Instance.new("UICorner", scroll).CornerRadius = UDim.new(0, 6)
-    _makeStroke(scroll)
 
     local scrollItems = {}
     for i, item in ipairs(items) do
@@ -2104,7 +2133,7 @@ local function _makeKeybind(parent, y, text, def, cb)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 90, 0, 30)
     btn.Position = UDim2.new(1, -100, 0.5, -15)
-    btn.BackgroundColor3 = themes[state.Current].AccentLight
+    btn.BackgroundColor3 = _inputColor()
     btn.BackgroundTransparency = 0.4
     btn.Text = def
     btn.TextColor3 = themes[state.Current].Text
@@ -2112,7 +2141,6 @@ local function _makeKeybind(parent, y, text, def, cb)
     btn.TextSize = 13
     btn.Parent = row
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    _makeStroke(btn)
 
     table.insert(state.Elements, { type = "keybind", label = label, btn = btn })
 
@@ -2127,7 +2155,7 @@ local function _makeKeybind(parent, y, text, def, cb)
         if gpe then return end
         if binding and input.UserInputType == Enum.UserInputType.Keyboard then
             btn.Text = input.KeyCode.Name
-            btn.BackgroundColor3 = themes[state.Current].AccentLight
+            btn.BackgroundColor3 = _inputColor()
             btn.BackgroundTransparency = 0.4
             binding = false
             if cb then cb(input.KeyCode.Name) end
@@ -2172,7 +2200,7 @@ local function _makeHexInput(parent, y, placeholder, defaultValue, cb)
     local box = Instance.new("TextBox")
     box.Size = UDim2.new(0.5, 0, 0, 30)
     box.Position = UDim2.new(0.5, 0, 0.5, -15)
-    box.BackgroundColor3 = themes[state.Current].AccentLight
+    box.BackgroundColor3 = _inputColor()
     box.BackgroundTransparency = 0.35
     box.BorderSizePixel = 0
     box.Text = defaultValue or "#C2C2C2"
@@ -2183,7 +2211,6 @@ local function _makeHexInput(parent, y, placeholder, defaultValue, cb)
     box.TextXAlignment = Enum.TextXAlignment.Center
     box.Parent = row
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
-    _makeStroke(box)
 
     table.insert(state.Elements, { type = "textbox", label = label, box = box })
 
@@ -2206,7 +2233,7 @@ local function _makeButton(parent, y, text, cb)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(1, -20, 0, 34)
     btn.Position = UDim2.new(0, 10, 0, y)
-    btn.BackgroundColor3 = themes[state.Current].AccentLight
+    btn.BackgroundColor3 = _inputColor()
     btn.BackgroundTransparency = 0.35
     btn.Text = text
     btn.TextColor3 = themes[state.Current].Text
@@ -2214,7 +2241,6 @@ local function _makeButton(parent, y, text, cb)
     btn.TextSize = 13
     btn.Parent = parent
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
-    _makeStroke(btn)
     table.insert(state.Elements, { type = "button", btn = btn })
     btn.MouseButton1Click:Connect(function()
         _playClick()
@@ -2223,11 +2249,9 @@ local function _makeButton(parent, y, text, cb)
     return btn
 end
 
--- ============================================================
--- THEME FUNCTIONS
--- ============================================================
 local function _updateUITheme()
     local t = themes[state.Current]
+    local inputCol = _inputColor()
     for _, e in pairs(state.Elements) do
         if e.type == "toggle" then
             e.label.TextColor3 = t.Text
@@ -2235,11 +2259,11 @@ local function _updateUITheme()
         elseif e.type == "slider" then
             e.label.TextColor3 = t.Text
             e.valLabel.TextColor3 = t.Accent
-            e.valLabel.BackgroundColor3 = t.AccentLight
+            e.valLabel.BackgroundColor3 = inputCol
             e.fill.BackgroundColor3 = t.Accent
         elseif e.type == "dropdown" then
             e.label.TextColor3 = t.Text
-            e.main.BackgroundColor3 = t.AccentLight
+            e.main.BackgroundColor3 = inputCol
             e.main.TextColor3 = t.Text
             if e.scroll then
                 e.scroll.BackgroundColor3 = t.Panel
@@ -2253,18 +2277,17 @@ local function _updateUITheme()
             end
         elseif e.type == "keybind" then
             e.label.TextColor3 = t.Text
-            e.btn.BackgroundColor3 = t.AccentLight
+            e.btn.BackgroundColor3 = inputCol
             e.btn.TextColor3 = t.Text
         elseif e.type == "text" then
             e.label.TextColor3 = t.Text
         elseif e.type == "stroke" then
-            e.stroke.Color = t.Outline
         elseif e.type == "textbox" then
             e.label.TextColor3 = t.Text
-            e.box.BackgroundColor3 = t.AccentLight
+            e.box.BackgroundColor3 = inputCol
             e.box.TextColor3 = t.Text
         elseif e.type == "button" then
-            e.btn.BackgroundColor3 = t.AccentLight
+            e.btn.BackgroundColor3 = inputCol
             e.btn.TextColor3 = t.Text
         end
     end
@@ -2358,9 +2381,6 @@ local function _showPage(name)
     end
 end
 
--- ============================================================
--- WHITELIST PAGE
--- ============================================================
 local function _wlApplyRowVisual(plr)
     local row = state.Whitelist.Rows[plr.UserId]
     if not row or not row.Parent then return end
@@ -2508,9 +2528,6 @@ services.Players.PlayerRemoving:Connect(function(plr)
     if _Camlock.Target == plr then _camDisable() end
 end)
 
--- ============================================================
--- BUILD TABS
--- ============================================================
 local _tabList = {
     "Combat", "Atmosphere", "Misc", "Teleport",
     "Avatar", "Skin Changer", "FPS",
@@ -2529,7 +2546,6 @@ for _, tabName in ipairs(_tabList) do
     btn.TextSize = 13
     btn.Parent = _tabHolder
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 9)
-    _makeStroke(btn)
     state.Buttons[tabName] = btn
 
     local page = Instance.new("Frame")
@@ -2707,9 +2723,16 @@ for _, tabName in ipairs(_tabList) do
             end)
             yOff = yOff + 40
 
+            _makeSlider(panel, yOff, "Contrast", "fog_contrast", settings.Fog.Contrast, -20, 10, 1, function(v)
+                settings.Fog.Contrast = v
+                _applyContrast(v)
+            end)
+            yOff = yOff + 40
+
             _makeButton(panel, yOff, "Reset Fog (Da Hood Default)", function()
                 settings.Fog.Color = DAHOOD_DEFAULT_FOG.FogColor
                 settings.Fog.Intensity = DAHOOD_DEFAULT_FOG.FogEnd
+                settings.Fog.Contrast = 0
                 services.Lighting.FogColor = DAHOOD_DEFAULT_FOG.FogColor
                 services.Lighting.FogStart = DAHOOD_DEFAULT_FOG.FogStart
                 services.Lighting.FogEnd = DAHOOD_DEFAULT_FOG.FogEnd
@@ -2722,6 +2745,10 @@ for _, tabName in ipairs(_tabList) do
                     atm.Haze = DAHOOD_DEFAULT_FOG.Atmosphere.Haze
                     atm.Decay = DAHOOD_DEFAULT_FOG.Atmosphere.Decay
                 end
+                services.Lighting.Brightness = 2
+                services.Lighting.Ambient = Color3.fromRGB(70, 70, 70)
+                services.Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+                services.Lighting.ColorShift_Top = Color3.fromRGB(0, 0, 0)
                 if hexBox then hexBox.Text = "#C2C2C2" end
             end)
             yOff = yOff + 46
@@ -2845,7 +2872,7 @@ for _, tabName in ipairs(_tabList) do
                     local mainBtn = Instance.new("TextButton")
                     mainBtn.Size = UDim2.new(0, 160, 0, 30)
                     mainBtn.Position = UDim2.new(1, -170, 0.5, -15)
-                    mainBtn.BackgroundColor3 = themes[state.Current].AccentLight
+                    mainBtn.BackgroundColor3 = _inputColor()
                     mainBtn.BackgroundTransparency = 0.4
                     mainBtn.Text = currentSkin
                     mainBtn.TextColor3 = themes[state.Current].Text
@@ -2854,7 +2881,6 @@ for _, tabName in ipairs(_tabList) do
                     mainBtn.ZIndex = 5
                     mainBtn.Parent = row
                     Instance.new("UICorner", mainBtn).CornerRadius = UDim.new(0, 6)
-                    _makeStroke(mainBtn)
 
                     local scroll = Instance.new("ScrollingFrame")
                     scroll.Size = UDim2.new(0, 160, 0, math.min(#config.skins * 28, 220))
@@ -2869,7 +2895,6 @@ for _, tabName in ipairs(_tabList) do
                     scroll.ScrollBarImageColor3 = themes[state.Current].Accent
                     scroll.Parent = row
                     Instance.new("UICorner", scroll).CornerRadius = UDim.new(0, 6)
-                    _makeStroke(scroll)
 
                     local optionButtons = {}
                     for i, opt in ipairs(config.skins) do
@@ -3024,15 +3049,7 @@ for _, tabName in ipairs(_tabList) do
             kill.TextSize = 18
             kill.Parent = panel
             Instance.new("UICorner", kill).CornerRadius = UDim.new(0, 12)
-            local kStroke = Instance.new("UIStroke")
-            kStroke.Name = "_stroke"
-            kStroke.Color = themes["Baby Blue"].Outline
-            kStroke.Thickness = 1
-            kStroke.Transparency = 0.55
-            kStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-            kStroke.Parent = kill
             state.KillBtn = kill
-            table.insert(state.Elements, { type = "stroke", stroke = kStroke })
 
             kill.MouseButton1Click:Connect(function()
                 _playClick()
@@ -3048,9 +3065,6 @@ for _, tabName in ipairs(_tabList) do
     btn.MouseButton1Click:Connect(function() _playClick() _showPage(tabName) end)
 end
 
--- ============================================================
--- FPS COUNTER
--- ============================================================
 local _fpsFrames, _fpsTime = 0, 0
 services.RunService.RenderStepped:Connect(function(dt)
     if not settings.FPS.Show or not settings.FPS.Display or not settings.FPS.Display.Parent then return end
@@ -3063,9 +3077,6 @@ services.RunService.RenderStepped:Connect(function(dt)
     end
 end)
 
--- ============================================================
--- FEATURE LOOPS
--- ============================================================
 services.RunService.Heartbeat:Connect(function()
     if settings.Speed.Enabled and settings.Speed.Active then
         if LocalPlayer.Character then
@@ -3187,9 +3198,6 @@ services.RunService.RenderStepped:Connect(function()
     end
 end)
 
--- ============================================================
--- INPUT
--- ============================================================
 mouse.Button1Down:Connect(function()
     if settings.Teleport.Enabled and settings.Teleport.Active and LocalPlayer.Character then
         local pos = mouse.Hit.Position
@@ -3247,8 +3255,5 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     _camDisable()
 end)
 
--- ============================================================
--- INIT
--- ============================================================
 _applyTheme("Baby Blue")
 _showPage("Combat")
